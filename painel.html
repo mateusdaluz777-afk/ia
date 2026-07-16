@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel · Contagem ao vivo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--graphite:#16191d;--panel:#20242a;--panel2:#282d34;--line:#363c44;--ink:#eceef1;--muted:#8b939e;--amber:#f5a623;--go:#2fd071;--go-dim:rgba(47,208,113,.14);--nogo:#ff4d4d;--nogo-dim:rgba(255,77,77,.14);--idle:#5b636d;--mono:'IBM Plex Mono',monospace;--disp:'Space Grotesk',system-ui,sans-serif}
+  *{box-sizing:border-box}html,body{margin:0;height:100%}
+  body{background:var(--graphite);color:var(--ink);font-family:var(--disp);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-direction:column;gap:16px;min-height:100vh}
+  header{display:flex;align-items:center;gap:18px;flex-wrap:wrap;border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:16px 22px}
+  h1{font-size:16px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin:0}
+  .sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
+  .live{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--idle)}.dot.on{background:var(--go);box-shadow:0 0 10px var(--go);animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+  .sess input{font-family:var(--mono);background:#0c0e11;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;width:110px;text-transform:uppercase}
+  .sess button{font-family:var(--disp);font-weight:600;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer}
+  .kpis{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:16px}
+  @media(max-width:760px){.kpis{grid-template-columns:1fr}}
+  .kpi{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:20px 24px}
+  .kpi .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .kpi .big{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums;line-height:1;margin-top:8px}
+  .kpi.hero .big{font-size:96px;color:var(--go)}
+  .kpi .big{font-size:44px}
+  .kpi.rej .big{color:var(--nogo)}
+  .split{display:grid;grid-template-columns:1fr 1.2fr;gap:16px;flex:1;min-height:0}
+  @media(max-width:900px){.split{grid-template-columns:1fr}}
+  .card{border:1px solid var(--line);background:var(--panel);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+  .cap{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .cap button{font-family:var(--disp);font-weight:600;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px}
+  .last{padding:24px;display:flex;flex-direction:column;gap:12px;flex:1}
+  .stamp{font-family:var(--mono);font-weight:700;font-size:44px;letter-spacing:.06em;padding:12px 22px;border-radius:12px;border:2px solid var(--idle);color:var(--idle);align-self:flex-start;line-height:1}
+  .stamp.go{color:var(--go);border-color:var(--go);background:var(--go-dim)}.stamp.no{color:var(--nogo);border-color:var(--nogo);background:var(--nogo-dim)}
+  .lastmeta{font-family:var(--mono);font-size:12px;color:var(--muted)}.lastmeta .k{color:var(--ink)}
+  .lastjust{font-size:16px;line-height:1.5}
+  .feed{overflow:auto;flex:1}
+  .row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,.03);font-size:14px;animation:in .3s}
+  @keyframes in{from{background:var(--amber);opacity:0}to{opacity:1}}
+  .pill{font-family:var(--mono);font-size:11px;font-weight:600;padding:4px 9px;border-radius:6px}
+  .pill.go{background:var(--go-dim);color:var(--go)}.pill.no{background:var(--nogo-dim);color:var(--nogo)}
+  .row .txt{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row .t{font-family:var(--mono);font-size:12px;color:var(--idle)}
+  .empty{color:var(--muted);font-family:var(--mono);font-size:13px;text-align:center;padding:36px}
+  .warn{font-family:var(--mono);font-size:12px;color:var(--nogo);background:var(--nogo-dim);border:1px solid var(--nogo);border-radius:12px;padding:14px 16px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Contagem da Pilha</h1><div class="sub" id="sub">aguardando leituras do celular…</div></div>
+    <div class="sess">
+      <input id="sessInput" placeholder="sessão" maxlength="8">
+      <button id="btnSess">Ver</button>
+    </div>
+    <div class="live"><span class="dot" id="dot"></span><span id="liveTxt">offline</span></div>
+  </header>
+
+  <div id="warn"></div>
+
+  <div class="kpis">
+    <div class="kpi hero"><div class="lbl">Peças na pilha agora</div><div class="big" id="kPile">0</div></div>
+    <div class="kpi"><div class="lbl">Entradas (total colocado)</div><div class="big" id="kIn">0</div></div>
+    <div class="kpi rej"><div class="lbl">Saídas (total retirado)</div><div class="big" id="kOut">0</div></div>
+  </div>
+
+  <div class="split">
+    <div class="card">
+      <div class="cap"><span>Última leitura</span><span id="lastTime">—</span></div>
+      <div class="last">
+        <div class="stamp" id="stamp">—</div>
+        <div class="lastmeta" id="lastMeta">posição <span class="k">—</span> · qualidade <span class="k">—</span></div>
+        <div class="lastjust" id="lastJust">Sem leituras ainda.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="cap"><span>Fluxo ao vivo</span><button id="btnCsv">Baixar planilha</button></div>
+      <div class="feed" id="feed"><div class="empty">Nenhuma leitura recebida.</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== CONFIGURAÇÃO (mesmo projeto do leitor) ===== */
+const SUPABASE_URL      = "https://zdpvqqeaeabqupewmulo.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_C5GG9bWX5AAdBU_bngOioQ_zrt8VX59";
+/* ================================================= */
+
+const $=id=>document.getElementById(id);
+let lastId=0,pile=0,ins=0,outs=0,rows=[],sessao='',emptied=false,fails=0;
+const ready = SUPABASE_URL.indexOf('SEU-PROJETO')<0 && SUPABASE_ANON_KEY!=='SUA_ANON_KEY';
+if(!ready) $('warn').innerHTML='<div class="warn">Configure SUPABASE_URL e SUPABASE_ANON_KEY no topo do &lt;script&gt; (o mesmo projeto do leitor).</div>';
+
+$('btnSess').onclick=()=>{ sessao=$('sessInput').value.trim().toUpperCase(); reset(); $('sub').textContent=sessao?('sessão '+sessao):'todas as sessões'; };
+function reset(){ lastId=0;pile=ins=outs=0;rows=[];emptied=false;$('kPile').textContent=0;$('kIn').textContent=0;$('kOut').textContent=0;$('feed').innerHTML='<div class="empty">Nenhuma leitura recebida.</div>';$('stamp').textContent='—';$('stamp').className='stamp';$('lastJust').textContent='Sem leituras ainda.';$('lastMeta').innerHTML='variação <span class="k">—</span>';$('lastTime').textContent='—'; }
+
+async function poll(){
+  if(!ready)return;
+  try{
+    let q=SUPABASE_URL+'/rest/v1/leituras?select=*&order=id.asc&id=gt.'+lastId+'&limit=200';
+    if(sessao) q+='&sessao=eq.'+encodeURIComponent(sessao);
+    const r=await fetch(q,{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    if(!r.ok){throw new Error(await r.text());}
+    const data=await r.json();
+    setLive(true);
+    data.forEach(add); if(data.length) lastId=data[data.length-1].id;
+  }catch(e){ fails++; if(fails>2) setLive(false); console.error(e); }
+}
+function setLive(on){ fails=on?0:fails; $('dot').className='dot'+(on?' on':''); $('liveTxt').textContent=on?'ao vivo':'offline'; }
+
+function add(rec){
+  if(!emptied){ $('feed').innerHTML=''; emptied=true; }
+  rows.push(rec);
+  const q=(rec.quantidade!=null)?rec.quantidade:0;
+  const d=(rec.delta!=null)?rec.delta:0;
+  pile=q; if(d>0)ins+=d; else if(d<0)outs+=(-d);
+  $('kPile').textContent=pile; $('kIn').textContent=ins; $('kOut').textContent=outs;
+  const dt=new Date(rec.criado_em), hora=dt.toLocaleTimeString('pt-BR');
+  const up=d>0, dn=d<0;
+  const dtxt = d>0?('+'+d) : (d<0?String(d) : '=');
+  $('stamp').textContent=dtxt; $('stamp').className='stamp '+(up?'go':dn?'no':'');
+  $('lastMeta').innerHTML='variação <span class="k">'+dtxt+'</span> · pilha agora <span class="k">'+q+'</span>';
+  $('lastJust').textContent=rec.justificativa||'—'; $('lastTime').textContent=hora;
+  const row=document.createElement('div'); row.className='row';
+  row.innerHTML='<span class="pill '+(up?'go':dn?'no':'')+'">'+dtxt+'</span><span class="txt">'+(rec.justificativa||'—')+' → '+q+' na pilha</span><span class="t">'+hora+'</span>';
+  $('feed').prepend(row);
+}
+$('btnCsv').onclick=()=>{
+  const head=['#','Data','Hora','Sessao','Quantidade_na_pilha','Variacao','Justificativa'];
+  const lines=[head.join(';')];
+  rows.forEach((r,i)=>{const d=new Date(r.criado_em);lines.push([i+1,d.toLocaleDateString('pt-BR'),d.toLocaleTimeString('pt-BR'),r.sessao||'',r.quantidade!=null?r.quantidade:'',r.delta!=null?r.delta:'','"'+(r.justificativa||'').replace(/"/g,"'")+'"'].join(';'));});
+  const blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);const d=new Date();
+  a.download='pilha_'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'.csv';a.click();URL.revokeObjectURL(a.href);
+};
+if(ready){ poll(); setInterval(poll,1500); } // pooling leve; dá pra trocar por Realtime depois
+</script>
+</body>
+</html>
