@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Leitor · Contagem ao vivo</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<title>Inspetor de Pilha</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{--graphite:#16191d;--panel:#20242a;--panel2:#282d34;--line:#363c44;--ink:#eceef1;--muted:#8b939e;--amber:#f5a623;--go:#2fd071;--go-dim:rgba(47,208,113,.14);--nogo:#ff4d4d;--nogo-dim:rgba(255,77,77,.14);--idle:#5b636d;--mono:'IBM Plex Mono',monospace;--disp:'Space Grotesk',system-ui,sans-serif}
   *{box-sizing:border-box}html,body{margin:0}
@@ -54,8 +54,74 @@
   .sess{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;padding:6px}.sess b{color:var(--amber);letter-spacing:.1em}
   .warn{font-family:var(--mono);font-size:11px;color:var(--nogo);background:var(--nogo-dim);border:1px solid var(--nogo);border-radius:10px;padding:10px 12px;line-height:1.5}
 </style>
+<style>
+  :root{--graphite:#16191d;--panel:#20242a;--panel2:#282d34;--line:#363c44;--ink:#eceef1;--muted:#8b939e;--amber:#f5a623;--go:#2fd071;--go-dim:rgba(47,208,113,.14);--nogo:#ff4d4d;--nogo-dim:rgba(255,77,77,.14);--idle:#5b636d;--mono:'IBM Plex Mono',monospace;--disp:'Space Grotesk',system-ui,sans-serif}
+  *{box-sizing:border-box}html,body{margin:0;height:100%}
+  body{background:var(--graphite);color:var(--ink);font-family:var(--disp);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-direction:column;gap:16px;min-height:100vh}
+  header{display:flex;align-items:center;gap:18px;flex-wrap:wrap;border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:16px 22px}
+  h1{font-size:16px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin:0}
+  .sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
+  .live{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--idle)}.dot.on{background:var(--go);box-shadow:0 0 10px var(--go);animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+  .sess input{font-family:var(--mono);background:#0c0e11;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;width:110px;text-transform:uppercase}
+  .sess button{font-family:var(--disp);font-weight:600;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer}
+  .kpis{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:16px}
+  @media(max-width:760px){.kpis{grid-template-columns:1fr}}
+  .kpi{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:20px 24px}
+  .kpi .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .kpi .big{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums;line-height:1;margin-top:8px}
+  .kpi.hero .big{font-size:96px;color:var(--go)}
+  .kpi .big{font-size:44px}
+  .kpi.rej .big{color:var(--nogo)}
+  .split{display:grid;grid-template-columns:1fr 1.2fr;gap:16px;flex:1;min-height:0}
+  @media(max-width:900px){.split{grid-template-columns:1fr}}
+  .card{border:1px solid var(--line);background:var(--panel);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+  .cap{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .cap button{font-family:var(--disp);font-weight:600;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px}
+  .last{padding:24px;display:flex;flex-direction:column;gap:12px;flex:1}
+  .stamp{font-family:var(--mono);font-weight:700;font-size:44px;letter-spacing:.06em;padding:12px 22px;border-radius:12px;border:2px solid var(--idle);color:var(--idle);align-self:flex-start;line-height:1}
+  .stamp.go{color:var(--go);border-color:var(--go);background:var(--go-dim)}.stamp.no{color:var(--nogo);border-color:var(--nogo);background:var(--nogo-dim)}
+  .lastmeta{font-family:var(--mono);font-size:12px;color:var(--muted)}.lastmeta .k{color:var(--ink)}
+  .lastjust{font-size:16px;line-height:1.5}
+  .feed{overflow:auto;flex:1}
+  .row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,.03);font-size:14px;animation:in .3s}
+  @keyframes in{from{background:var(--amber);opacity:0}to{opacity:1}}
+  .pill{font-family:var(--mono);font-size:11px;font-weight:600;padding:4px 9px;border-radius:6px}
+  .pill.go{background:var(--go-dim);color:var(--go)}.pill.no{background:var(--nogo-dim);color:var(--nogo)}
+  .row .txt{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row .t{font-family:var(--mono);font-size:12px;color:var(--idle)}
+  .empty{color:var(--muted);font-family:var(--mono);font-size:13px;text-align:center;padding:36px}
+  .warn{font-family:var(--mono);font-size:12px;color:var(--nogo);background:var(--nogo-dim);border:1px solid var(--nogo);border-radius:12px;padding:14px 16px;line-height:1.6}
+</style>
+<style>
+  #chooser{position:fixed;inset:0;background:var(--graphite);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;text-align:center}
+  #chooser h1{font-size:20px;letter-spacing:.16em;margin:0}
+  #chooser p{font-family:var(--mono);font-size:12px;color:var(--muted);margin:0 0 6px}
+  .pick{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+  .pick button{font-family:var(--disp);font-weight:700;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:16px;padding:26px 30px;cursor:pointer;font-size:17px;min-width:190px;display:flex;flex-direction:column;gap:8px;align-items:center;transition:.15s}
+  .pick button:hover{border-color:var(--amber)}
+  .pick .ic{font-size:34px}
+  .pick .d{font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400;letter-spacing:.05em}
+  .pick .leitor{border-color:var(--go)}.pick .leitor .ic{color:var(--go)}
+  .pick .painel{border-color:var(--amber)}.pick .painel .ic{color:var(--amber)}
+  #app{display:none}
+  #app.on{display:block}
+</style>
 </head>
 <body>
+<div id="chooser">
+  <div><p>Packem · Visão</p><h1>INSPETOR DE PILHA</h1></div>
+  <div class="pick">
+    <button class="leitor" onclick="startMode('leitor')"><span class="ic">▣</span>Sou o LEITOR<span class="d">celular · câmera + IA</span></button>
+    <button class="painel" onclick="startMode('painel')"><span class="ic">◧</span>Sou o PAINEL<span class="d">tela grande · ao vivo</span></button>
+  </div>
+  <p id="autoHint"></p>
+</div>
+<div id="app"></div>
+
+<template id="tpl-leitor">
 <div class="wrap">
   <header>
     <div class="led" id="led"></div>
@@ -97,134 +163,65 @@
   <div class="sess">sessão: <b id="sessCode">—</b> · digite no painel</div>
 </div>
 
+</template>
+<template id="tpl-painel">
+<div class="wrap">
+  <header>
+    <div><h1>Contagem da Pilha</h1><div class="sub" id="sub">aguardando leituras do celular…</div></div>
+    <div class="sess">
+      <input id="sessInput" placeholder="sessão" maxlength="8">
+      <button id="btnSess">Ver</button>
+    </div>
+    <div class="live"><span class="dot" id="dot"></span><span id="liveTxt">offline</span></div>
+  </header>
+
+  <div id="warn"></div>
+
+  <div class="kpis">
+    <div class="kpi hero"><div class="lbl">Peças na pilha agora</div><div class="big" id="kPile">0</div></div>
+    <div class="kpi"><div class="lbl">Entradas (total colocado)</div><div class="big" id="kIn">0</div></div>
+    <div class="kpi rej"><div class="lbl">Saídas (total retirado)</div><div class="big" id="kOut">0</div></div>
+  </div>
+
+  <div class="split">
+    <div class="card">
+      <div class="cap"><span>Última leitura</span><span id="lastTime">—</span></div>
+      <div class="last">
+        <div class="stamp" id="stamp">—</div>
+        <div class="lastmeta" id="lastMeta">posição <span class="k">—</span> · qualidade <span class="k">—</span></div>
+        <div class="lastjust" id="lastJust">Sem leituras ainda.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="cap"><span>Fluxo ao vivo</span><button id="btnCsv">Baixar planilha</button></div>
+      <div class="feed" id="feed"><div class="empty">Nenhuma leitura recebida.</div></div>
+    </div>
+  </div>
+</div>
+
+</template>
+
 <script>
-/* ===== CONFIGURAÇÃO ===== */
-const SUPABASE_URL      = "https://zdpvqqeaeabqupewmulo.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_C5GG9bWX5AAdBU_bngOioQ_zrt8VX59";
-const INSPECT_ENDPOINT  = "/api/inspect"; // proxy no seu domínio (Vercel)
-/* ======================== */
+const LEITOR_SCRIPT = '\n/* ===== CONFIGURAÇÃO ===== */\nconst SUPABASE_URL      = "https://zdpvqqeaeabqupewmulo.supabase.co";\nconst SUPABASE_ANON_KEY = "sb_publishable_C5GG9bWX5AAdBU_bngOioQ_zrt8VX59";\nconst INSPECT_ENDPOINT  = "/api/inspect"; // proxy no seu domínio (Vercel)\n/* ======================== */\n\nconst $=id=>document.getElementById(id);\nconst video=$(\'video\'),snap=$(\'snap\'),view=$(\'view\'),reticle=$(\'reticle\');\nlet stream=null,pileNow=0,busy=false,refB64=null,baseB64=null,pending=null;\nlet sensorOn=false,prevGray=null,sawMotion=false,stillFrames=0;\nconst SESSAO=\'L\'+Date.now().toString(36).slice(-4).toUpperCase(); $(\'sessCode\').textContent=SESSAO;\nconst mC=document.createElement(\'canvas\');mC.width=80;mC.height=60;const mCtx=mC.getContext(\'2d\',{willReadFrequently:true});\nconst CROP_W=0.70,CROP_H=0.74,SETTLE=4,CONF_MIN=70;\nconst MX0=Math.round(80*(0.5-CROP_W/2)),MX1=Math.round(80*(0.5+CROP_W/2)),MY0=Math.round(60*(0.5-CROP_H/2)),MY1=Math.round(60*(0.5+CROP_H/2));\nfunction thr(){return 26-(+$(\'sens\').value)*2;}\nconst supaReady = SUPABASE_URL.indexOf(\'SEU-PROJETO\')<0 && SUPABASE_ANON_KEY!==\'SUA_ANON_KEY\';\nif(!supaReady){ $(\'cfgWarn\').innerHTML=\'<div class="warn">Supabase não configurado — conta local mas <b>não envia pro painel</b>. Preencha SUPABASE_URL e SUPABASE_ANON_KEY.</div>\'; $(\'conn\').textContent=\'painel: off\'; $(\'conn\').className=\'conn off\'; }\nelse { $(\'conn\').textContent=\'painel: pronto\'; $(\'conn\').className=\'conn ok\'; }\n\nconst GUIDE=`Voce compara a MESMA pilha ANTES e DEPOIS de a pessoa mexer.\nDiga quantas pecas (iguais a REFERENCIA) foram ADICIONADAS ou RETIRADAS entre ANTES e DEPOIS:\n- colocaram 1 peca -> variacao=1 ; colocaram 2 -> variacao=2\n- tiraram 1 -> variacao=-1\n- nada mudou, ou so passou a mao sem deixar peca -> variacao=0\nIGNORE maos, bracos, ferramentas, sombras e fundo. Conte so pecas da referencia que FICARAM na pilha.\nNa duvida entre 0 e 1, responda 0.\nResponda APENAS JSON: {"variacao": <inteiro, pode ser negativo>, "confianca": <0-100>, "justificativa":"breve"}`;\n\nasync function startCam(){\n  try{\n    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:\'environment\'},width:{ideal:1920},height:{ideal:1080}},audio:false});\n    video.srcObject=stream;video.style.display=\'block\';$(\'placeholder\').style.display=\'none\';reticle.style.display=\'block\';$(\'badge\').style.display=\'block\';\n    $(\'btnRefCam\').disabled=false;$(\'btnCam\').textContent=\'Desligar\';setLed(\'câmera ativa\',\'on\');requestAnimationFrame(loop);\n  }catch(e){ setLed(\'câmera bloqueada\',\'no\'); $(\'placeholder\').innerHTML=\'Câmera bloqueada. Publique no seu HTTPS ou use "Imagem ref".\'; }\n}\nfunction stopCam(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} stopSensor();video.style.display=\'none\';snap.style.display=\'none\';reticle.style.display=\'none\';$(\'badge\').style.display=\'none\';$(\'placeholder\').style.display=\'block\';$(\'placeholder\').textContent=\'Câmera desligada.\';$(\'btnRefCam\').disabled=true;$(\'btnCycle\').disabled=true;$(\'btnCam\').textContent=\'Ligar câmera\';setLed(\'câmera desligada\',\'\'); }\n$(\'btnCam\').onclick=()=>stream?stopCam():startCam();\n\nfunction grab(freeze){ const w=video.videoWidth||1280,h=video.videoHeight||960;snap.width=w;snap.height=h;snap.getContext(\'2d\').drawImage(video,0,0,w,h);if(freeze)snap.style.display=\'block\';const cw=Math.round(w*CROP_W),ch=Math.round(h*CROP_H),cx=Math.round((w-cw)/2),cy=Math.round((h-ch)/2);const c=document.createElement(\'canvas\');c.width=cw;c.height=ch;c.getContext(\'2d\').drawImage(snap,cx,cy,cw,ch,0,0,cw,ch);return c.toDataURL(\'image/jpeg\',0.92).split(\',\')[1]; }\n\nfunction setRef(b64){ refB64=b64;const t=$(\'refThumb\');t.classList.add(\'set\');t.innerHTML=\'<img src="data:image/jpeg;base64,\'+b64+\'">\';$(\'refState\').textContent=\'Referência guardada.\';$(\'btnRefCam\').textContent=\'Recapturar\';if(stream)$(\'btnCycle\').disabled=false;$(\'just\').textContent=\'Referência pronta. Inicie a contagem.\';setLed(\'referência guardada\',\'go\'); }\n$(\'btnRefCam\').onclick=()=>{if(stream)setRef(grab(false));};\n$(\'btnRefUp\').onclick=()=>$(\'refFile\').click();\n$(\'refFile\').onchange=e=>{const f=e.target.files[0];if(!f)return;toB64(f,setRef);e.target.value=\'\';};\nfunction toB64(f,cb){const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const c=document.createElement(\'canvas\');c.width=img.width;c.height=img.height;c.getContext(\'2d\').drawImage(img,0,0);cb(c.toDataURL(\'image/jpeg\',0.92).split(\',\')[1]);};img.src=r.result;};r.readAsDataURL(f);}\n\n/* correção manual */\nfunction bump(d){ pileNow=Math.max(0,pileNow+d); $(\'count\').textContent=pileNow; if(supaReady)sendToPanel(pileNow,d,{justificativa:\'correção manual\'}); }\n$(\'btnPlus\').onclick=()=>bump(1);\n$(\'btnMinus\').onclick=()=>bump(-1);\n$(\'btnZero\').onclick=()=>{ const d=-pileNow; pileNow=0;$(\'count\').textContent=\'0\'; if(d!==0&&supaReady)sendToPanel(0,d,{justificativa:\'zerado manual\'}); };\n\nfunction loop(){\n  if(!stream)return;\n  mCtx.drawImage(video,0,0,80,60);const d=mCtx.getImageData(0,0,80,60).data;const cur=new Float32Array(4800);\n  for(let i=0,j=0;i<d.length;i+=4,j++)cur[j]=d[i]*0.3+d[i+1]*0.59+d[i+2]*0.11;\n  let s=0,n=0;if(prevGray){for(let y=MY0;y<MY1;y++)for(let x=MX0;x<MX1;x++){const k=y*80+x;s+=Math.abs(cur[k]-prevGray[k]);n++;}}\n  const sc=n?s/n:0;prevGray=cur;$(\'mfill\').style.width=Math.min(100,sc/thr()*50)+\'%\';\n  if(sensorOn){\n    const b=$(\'badge\');\n    if(!busy){\n      if(sc>thr()){ if(!sawMotion){baseB64=grab(false);} sawMotion=true;stillFrames=0;b.textContent=\'movimento\';b.className=\'badge move\'; }\n      else if(sawMotion){ stillFrames++;b.textContent=\'colocou? lendo…\';b.className=\'badge settle\'; if(stillFrames>=SETTLE){sawMotion=false;stillFrames=0;b.textContent=\'lendo\';inspect(grab(true));} }\n      else{ b.textContent=\'aguardando\';b.className=\'badge\'; }\n    } else {\n      if(sc>thr() && !sawMotion){ baseB64=grab(false); sawMotion=true; stillFrames=0; }\n    }\n  }\n  requestAnimationFrame(loop);\n}\n$(\'btnCycle\').onclick=()=>sensorOn?stopSensor():startSensor();\nfunction startSensor(){ if(!refB64){alert(\'Capture a referência primeiro.\');return;} sensorOn=true;sawMotion=false;stillFrames=0;const b=$(\'btnCycle\');b.classList.add(\'active\');b.textContent=\'Parar\';setLed(\'contando ao vivo\',\'on\'); }\nfunction stopSensor(){ sensorOn=false;pending=null;const b=$(\'btnCycle\');b.classList.remove(\'active\');b.textContent=\'Iniciar contagem ao vivo\';$(\'badge\').textContent=\'ocioso\';$(\'badge\').className=\'badge\';if(stream)setLed(\'câmera ativa\',\'on\'); }\n\nfunction parseV(t){let s=t.replace(/```json|```/g,\'\').trim();const m=s.match(/\\{[\\s\\S]*\\}/);if(m)s=m[0];return JSON.parse(s);}\nasync function callModel(after){\n  const content=[];\n  if(refB64){content.push({type:\'text\',text:\'REFERENCIA (peca a contar):\'});content.push({type:\'image\',source:{type:\'base64\',media_type:\'image/jpeg\',data:refB64}});}\n  if(baseB64){content.push({type:\'text\',text:\'FOTO ANTES (pilha antes de mexer):\'});content.push({type:\'image\',source:{type:\'base64\',media_type:\'image/jpeg\',data:baseB64}});}\n  content.push({type:\'text\',text:\'FOTO DEPOIS (pilha agora). \'+GUIDE});\n  content.push({type:\'image\',source:{type:\'base64\',media_type:\'image/jpeg\',data:after}});\n  const res=await fetch(INSPECT_ENDPOINT||\'https://api.anthropic.com/v1/messages\',{method:\'POST\',headers:{\'Content-Type\':\'application/json\'},body:JSON.stringify({model:\'claude-sonnet-4-6\',max_tokens:1000,messages:[{role:\'user\',content}]})});\n  const data=await res.json();\n  const text=(data.content||[]).filter(x=>x.type===\'text\').map(x=>x.text).join(\'\\n\');\n  return parseV(text);\n}\nasync function inspect(after){\n  if(busy){pending=after;return;} busy=true;view.classList.add(\'busy\');setLed(\'lendo…\',\'on\');\n  try{\n    const v=await callModel(after);\n    let d=parseInt(v.variacao,10); if(isNaN(d))d=0;\n    const conf=(v.confianca!=null)?+v.confianca:100;\n    if(d!==0){                                   // confirmação dupla só quando mudou\n      const v2=await callModel(after);\n      let d2=parseInt(v2.variacao,10); if(isNaN(d2))d2=0;\n      if(d2!==d){ v.justificativa=\'leituras divergiram (\'+d+\' vs \'+d2+\') — não contei\'; d=0; }\n    }\n    if(d!==0 && conf<CONF_MIN){ v.justificativa=\'confiança baixa (\'+conf+\') — não contei\'; d=0; }\n    await handle(d,v);\n  }catch(err){ setLed(\'erro na leitura\',\'no\');$(\'just\').textContent=\'Falha ao ler. Veja o console.\';console.error(err); }\n  busy=false;view.classList.remove(\'busy\');snap.style.display=\'none\';\n  if(sensorOn)setLed(\'contando ao vivo\',\'on\');\n  if(pending){const p=pending;pending=null;setTimeout(()=>inspect(p),40);}\n}\n\nasync function handle(d,v){\n  if(d<0) d=Math.max(d,-pileNow);              // não desconta abaixo de zero\n  pileNow=Math.max(0,pileNow+d);\n  $(\'count\').textContent=pileNow;\n  const st=$(\'stamp\');st.style.display=\'block\';\n  if(d>0){st.textContent=\'+\'+d;st.className=\'stamp go\';}\n  else if(d<0){st.textContent=String(d);st.className=\'stamp no\';}\n  else{st.textContent=String(pileNow);st.className=\'stamp\';}\n  $(\'just\').textContent=v.justificativa||\'-\';\n  $(\'led\').className=\'led \'+(d>0?\'go\':d<0?\'no\':\'on\');\n  if(d!==0 && supaReady) await sendToPanel(pileNow,d,v);\n  setLed(d>0?(\'colocou +\'+d):d<0?(\'tirou \'+(-d)):(\'pilha: \'+pileNow), d>0?\'go\':d<0?\'no\':\'on\');\n}\nasync function sendToPanel(q,delta,v){\n  try{\n    const r=await fetch(SUPABASE_URL+\'/rest/v1/leituras\',{method:\'POST\',headers:{apikey:SUPABASE_ANON_KEY,Authorization:\'Bearer \'+SUPABASE_ANON_KEY,\'Content-Type\':\'application/json\',Prefer:\'return=minimal\'},\n      body:JSON.stringify({sessao:SESSAO,quantidade:q,delta:delta,justificativa:v.justificativa||\'\'})});\n    if(!r.ok){$(\'conn\').textContent=\'painel: erro\';$(\'conn\').className=\'conn off\';console.error(\'supabase\',await r.text());}\n    else{$(\'conn\').textContent=\'painel: enviando\';$(\'conn\').className=\'conn ok\';}\n  }catch(e){$(\'conn\').textContent=\'painel: sem rede\';$(\'conn\').className=\'conn off\';console.error(e);}\n}\nfunction setLed(t,c){$(\'status\').textContent=t;$(\'led\').className=\'led\'+(c?\' \'+c:\'\');}\n';
+const PAINEL_SCRIPT = '\n/* ===== CONFIGURAÇÃO (mesmo projeto do leitor) ===== */\nconst SUPABASE_URL      = "https://zdpvqqeaeabqupewmulo.supabase.co";\nconst SUPABASE_ANON_KEY = "sb_publishable_C5GG9bWX5AAdBU_bngOioQ_zrt8VX59";\n/* ================================================= */\n\nconst $=id=>document.getElementById(id);\nlet lastId=0,pile=0,ins=0,outs=0,rows=[],sessao=\'\',emptied=false,fails=0;\nconst ready = SUPABASE_URL.indexOf(\'SEU-PROJETO\')<0 && SUPABASE_ANON_KEY!==\'SUA_ANON_KEY\';\nif(!ready) $(\'warn\').innerHTML=\'<div class="warn">Configure SUPABASE_URL e SUPABASE_ANON_KEY no topo do &lt;script&gt; (o mesmo projeto do leitor).</div>\';\n\n$(\'btnSess\').onclick=()=>{ sessao=$(\'sessInput\').value.trim().toUpperCase(); reset(); $(\'sub\').textContent=sessao?(\'sessão \'+sessao):\'todas as sessões\'; };\nfunction reset(){ lastId=0;pile=ins=outs=0;rows=[];emptied=false;$(\'kPile\').textContent=0;$(\'kIn\').textContent=0;$(\'kOut\').textContent=0;$(\'feed\').innerHTML=\'<div class="empty">Nenhuma leitura recebida.</div>\';$(\'stamp\').textContent=\'—\';$(\'stamp\').className=\'stamp\';$(\'lastJust\').textContent=\'Sem leituras ainda.\';$(\'lastMeta\').innerHTML=\'variação <span class="k">—</span>\';$(\'lastTime\').textContent=\'—\'; }\n\nasync function poll(){\n  if(!ready)return;\n  try{\n    let q=SUPABASE_URL+\'/rest/v1/leituras?select=*&order=id.asc&id=gt.\'+lastId+\'&limit=200\';\n    if(sessao) q+=\'&sessao=eq.\'+encodeURIComponent(sessao);\n    const r=await fetch(q,{headers:{apikey:SUPABASE_ANON_KEY,Authorization:\'Bearer \'+SUPABASE_ANON_KEY}});\n    if(!r.ok){throw new Error(await r.text());}\n    const data=await r.json();\n    setLive(true);\n    data.forEach(add); if(data.length) lastId=data[data.length-1].id;\n  }catch(e){ fails++; if(fails>2) setLive(false); console.error(e); }\n}\nfunction setLive(on){ fails=on?0:fails; $(\'dot\').className=\'dot\'+(on?\' on\':\'\'); $(\'liveTxt\').textContent=on?\'ao vivo\':\'offline\'; }\n\nfunction add(rec){\n  if(!emptied){ $(\'feed\').innerHTML=\'\'; emptied=true; }\n  rows.push(rec);\n  const q=(rec.quantidade!=null)?rec.quantidade:0;\n  const d=(rec.delta!=null)?rec.delta:0;\n  pile=q; if(d>0)ins+=d; else if(d<0)outs+=(-d);\n  $(\'kPile\').textContent=pile; $(\'kIn\').textContent=ins; $(\'kOut\').textContent=outs;\n  const dt=new Date(rec.criado_em), hora=dt.toLocaleTimeString(\'pt-BR\');\n  const up=d>0, dn=d<0;\n  const dtxt = d>0?(\'+\'+d) : (d<0?String(d) : \'=\');\n  $(\'stamp\').textContent=dtxt; $(\'stamp\').className=\'stamp \'+(up?\'go\':dn?\'no\':\'\');\n  $(\'lastMeta\').innerHTML=\'variação <span class="k">\'+dtxt+\'</span> · pilha agora <span class="k">\'+q+\'</span>\';\n  $(\'lastJust\').textContent=rec.justificativa||\'—\'; $(\'lastTime\').textContent=hora;\n  const row=document.createElement(\'div\'); row.className=\'row\';\n  row.innerHTML=\'<span class="pill \'+(up?\'go\':dn?\'no\':\'\')+\'">\'+dtxt+\'</span><span class="txt">\'+(rec.justificativa||\'—\')+\' → \'+q+\' na pilha</span><span class="t">\'+hora+\'</span>\';\n  $(\'feed\').prepend(row);\n}\n$(\'btnCsv\').onclick=()=>{\n  const head=[\'#\',\'Data\',\'Hora\',\'Sessao\',\'Quantidade_na_pilha\',\'Variacao\',\'Justificativa\'];\n  const lines=[head.join(\';\')];\n  rows.forEach((r,i)=>{const d=new Date(r.criado_em);lines.push([i+1,d.toLocaleDateString(\'pt-BR\'),d.toLocaleTimeString(\'pt-BR\'),r.sessao||\'\',r.quantidade!=null?r.quantidade:\'\',r.delta!=null?r.delta:\'\',\'"\'+(r.justificativa||\'\').replace(/"/g,"\'")+\'"\'].join(\';\'));});\n  const blob=new Blob([\'\\ufeff\'+lines.join(\'\\r\\n\')],{type:\'text/csv;charset=utf-8\'});\n  const a=document.createElement(\'a\');a.href=URL.createObjectURL(blob);const d=new Date();\n  a.download=\'pilha_\'+d.getFullYear()+String(d.getMonth()+1).padStart(2,\'0\')+String(d.getDate()).padStart(2,\'0\')+\'.csv\';a.click();URL.revokeObjectURL(a.href);\n};\nif(ready){ poll(); setInterval(poll,1500); } // pooling leve; dá pra trocar por Realtime depois\n';
 
-const $=id=>document.getElementById(id);
-const video=$('video'),snap=$('snap'),view=$('view'),reticle=$('reticle');
-let stream=null,pileNow=0,busy=false,refB64=null,baseB64=null,pending=null;
-let sensorOn=false,prevGray=null,sawMotion=false,stillFrames=0;
-const SESSAO='L'+Date.now().toString(36).slice(-4).toUpperCase(); $('sessCode').textContent=SESSAO;
-const mC=document.createElement('canvas');mC.width=80;mC.height=60;const mCtx=mC.getContext('2d',{willReadFrequently:true});
-const CROP_W=0.70,CROP_H=0.74,SETTLE=4,CONF_MIN=70;
-const MX0=Math.round(80*(0.5-CROP_W/2)),MX1=Math.round(80*(0.5+CROP_W/2)),MY0=Math.round(60*(0.5-CROP_H/2)),MY1=Math.round(60*(0.5+CROP_H/2));
-function thr(){return 26-(+$('sens').value)*2;}
-const supaReady = SUPABASE_URL.indexOf('SEU-PROJETO')<0 && SUPABASE_ANON_KEY!=='SUA_ANON_KEY';
-if(!supaReady){ $('cfgWarn').innerHTML='<div class="warn">Supabase não configurado — conta local mas <b>não envia pro painel</b>. Preencha SUPABASE_URL e SUPABASE_ANON_KEY.</div>'; $('conn').textContent='painel: off'; $('conn').className='conn off'; }
-else { $('conn').textContent='painel: pronto'; $('conn').className='conn ok'; }
+// dica de auto-modo por tamanho de tela
+(function(){
+  const isPhone = Math.min(screen.width,screen.height) < 620 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  document.getElementById('autoHint').textContent = isPhone ? 'Sugestão: neste aparelho, use o LEITOR.' : 'Sugestão: nesta tela, use o PAINEL.';
+})();
 
-const GUIDE=`Voce compara a MESMA pilha ANTES e DEPOIS de a pessoa mexer.
-Diga quantas pecas (iguais a REFERENCIA) foram ADICIONADAS ou RETIRADAS entre ANTES e DEPOIS:
-- colocaram 1 peca -> variacao=1 ; colocaram 2 -> variacao=2
-- tiraram 1 -> variacao=-1
-- nada mudou, ou so passou a mao sem deixar peca -> variacao=0
-IGNORE maos, bracos, ferramentas, sombras e fundo. Conte so pecas da referencia que FICARAM na pilha.
-Na duvida entre 0 e 1, responda 0.
-Responda APENAS JSON: {"variacao": <inteiro, pode ser negativo>, "confianca": <0-100>, "justificativa":"breve"}`;
-
-async function startCam(){
-  try{
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
-    video.srcObject=stream;video.style.display='block';$('placeholder').style.display='none';reticle.style.display='block';$('badge').style.display='block';
-    $('btnRefCam').disabled=false;$('btnCam').textContent='Desligar';setLed('câmera ativa','on');requestAnimationFrame(loop);
-  }catch(e){ setLed('câmera bloqueada','no'); $('placeholder').innerHTML='Câmera bloqueada. Publique no seu HTTPS ou use "Imagem ref".'; }
+function startMode(mode){
+  const tpl = document.getElementById('tpl-'+mode);
+  const app = document.getElementById('app');
+  app.innerHTML = tpl.innerHTML;
+  document.getElementById('chooser').style.display='none';
+  app.classList.add('on');
+  const code = (mode==='leitor'?LEITOR_SCRIPT:PAINEL_SCRIPT);
+  const s = document.createElement('script');
+  s.textContent = code;
+  document.body.appendChild(s);
 }
-function stopCam(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} stopSensor();video.style.display='none';snap.style.display='none';reticle.style.display='none';$('badge').style.display='none';$('placeholder').style.display='block';$('placeholder').textContent='Câmera desligada.';$('btnRefCam').disabled=true;$('btnCycle').disabled=true;$('btnCam').textContent='Ligar câmera';setLed('câmera desligada',''); }
-$('btnCam').onclick=()=>stream?stopCam():startCam();
-
-function grab(freeze){ const w=video.videoWidth||1280,h=video.videoHeight||960;snap.width=w;snap.height=h;snap.getContext('2d').drawImage(video,0,0,w,h);if(freeze)snap.style.display='block';const cw=Math.round(w*CROP_W),ch=Math.round(h*CROP_H),cx=Math.round((w-cw)/2),cy=Math.round((h-ch)/2);const c=document.createElement('canvas');c.width=cw;c.height=ch;c.getContext('2d').drawImage(snap,cx,cy,cw,ch,0,0,cw,ch);return c.toDataURL('image/jpeg',0.92).split(',')[1]; }
-
-function setRef(b64){ refB64=b64;const t=$('refThumb');t.classList.add('set');t.innerHTML='<img src="data:image/jpeg;base64,'+b64+'">';$('refState').textContent='Referência guardada.';$('btnRefCam').textContent='Recapturar';if(stream)$('btnCycle').disabled=false;$('just').textContent='Referência pronta. Inicie a contagem.';setLed('referência guardada','go'); }
-$('btnRefCam').onclick=()=>{if(stream)setRef(grab(false));};
-$('btnRefUp').onclick=()=>$('refFile').click();
-$('refFile').onchange=e=>{const f=e.target.files[0];if(!f)return;toB64(f,setRef);e.target.value='';};
-function toB64(f,cb){const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);cb(c.toDataURL('image/jpeg',0.92).split(',')[1]);};img.src=r.result;};r.readAsDataURL(f);}
-
-/* correção manual */
-function bump(d){ pileNow=Math.max(0,pileNow+d); $('count').textContent=pileNow; if(supaReady)sendToPanel(pileNow,d,{justificativa:'correção manual'}); }
-$('btnPlus').onclick=()=>bump(1);
-$('btnMinus').onclick=()=>bump(-1);
-$('btnZero').onclick=()=>{ const d=-pileNow; pileNow=0;$('count').textContent='0'; if(d!==0&&supaReady)sendToPanel(0,d,{justificativa:'zerado manual'}); };
-
-function loop(){
-  if(!stream)return;
-  mCtx.drawImage(video,0,0,80,60);const d=mCtx.getImageData(0,0,80,60).data;const cur=new Float32Array(4800);
-  for(let i=0,j=0;i<d.length;i+=4,j++)cur[j]=d[i]*0.3+d[i+1]*0.59+d[i+2]*0.11;
-  let s=0,n=0;if(prevGray){for(let y=MY0;y<MY1;y++)for(let x=MX0;x<MX1;x++){const k=y*80+x;s+=Math.abs(cur[k]-prevGray[k]);n++;}}
-  const sc=n?s/n:0;prevGray=cur;$('mfill').style.width=Math.min(100,sc/thr()*50)+'%';
-  if(sensorOn){
-    const b=$('badge');
-    if(!busy){
-      if(sc>thr()){ if(!sawMotion){baseB64=grab(false);} sawMotion=true;stillFrames=0;b.textContent='movimento';b.className='badge move'; }
-      else if(sawMotion){ stillFrames++;b.textContent='colocou? lendo…';b.className='badge settle'; if(stillFrames>=SETTLE){sawMotion=false;stillFrames=0;b.textContent='lendo';inspect(grab(true));} }
-      else{ b.textContent='aguardando';b.className='badge'; }
-    } else {
-      if(sc>thr() && !sawMotion){ baseB64=grab(false); sawMotion=true; stillFrames=0; }
-    }
-  }
-  requestAnimationFrame(loop);
-}
-$('btnCycle').onclick=()=>sensorOn?stopSensor():startSensor();
-function startSensor(){ if(!refB64){alert('Capture a referência primeiro.');return;} sensorOn=true;sawMotion=false;stillFrames=0;const b=$('btnCycle');b.classList.add('active');b.textContent='Parar';setLed('contando ao vivo','on'); }
-function stopSensor(){ sensorOn=false;pending=null;const b=$('btnCycle');b.classList.remove('active');b.textContent='Iniciar contagem ao vivo';$('badge').textContent='ocioso';$('badge').className='badge';if(stream)setLed('câmera ativa','on'); }
-
-function parseV(t){let s=t.replace(/```json|```/g,'').trim();const m=s.match(/\{[\s\S]*\}/);if(m)s=m[0];return JSON.parse(s);}
-async function callModel(after){
-  const content=[];
-  if(refB64){content.push({type:'text',text:'REFERENCIA (peca a contar):'});content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:refB64}});}
-  if(baseB64){content.push({type:'text',text:'FOTO ANTES (pilha antes de mexer):'});content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:baseB64}});}
-  content.push({type:'text',text:'FOTO DEPOIS (pilha agora). '+GUIDE});
-  content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:after}});
-  const res=await fetch(INSPECT_ENDPOINT||'https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content}]})});
-  const data=await res.json();
-  const text=(data.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('\n');
-  return parseV(text);
-}
-async function inspect(after){
-  if(busy){pending=after;return;} busy=true;view.classList.add('busy');setLed('lendo…','on');
-  try{
-    const v=await callModel(after);
-    let d=parseInt(v.variacao,10); if(isNaN(d))d=0;
-    const conf=(v.confianca!=null)?+v.confianca:100;
-    if(d!==0){                                   // confirmação dupla só quando mudou
-      const v2=await callModel(after);
-      let d2=parseInt(v2.variacao,10); if(isNaN(d2))d2=0;
-      if(d2!==d){ v.justificativa='leituras divergiram ('+d+' vs '+d2+') — não contei'; d=0; }
-    }
-    if(d!==0 && conf<CONF_MIN){ v.justificativa='confiança baixa ('+conf+') — não contei'; d=0; }
-    await handle(d,v);
-  }catch(err){ setLed('erro na leitura','no');$('just').textContent='Falha ao ler. Veja o console.';console.error(err); }
-  busy=false;view.classList.remove('busy');snap.style.display='none';
-  if(sensorOn)setLed('contando ao vivo','on');
-  if(pending){const p=pending;pending=null;setTimeout(()=>inspect(p),40);}
-}
-
-async function handle(d,v){
-  if(d<0) d=Math.max(d,-pileNow);              // não desconta abaixo de zero
-  pileNow=Math.max(0,pileNow+d);
-  $('count').textContent=pileNow;
-  const st=$('stamp');st.style.display='block';
-  if(d>0){st.textContent='+'+d;st.className='stamp go';}
-  else if(d<0){st.textContent=String(d);st.className='stamp no';}
-  else{st.textContent=String(pileNow);st.className='stamp';}
-  $('just').textContent=v.justificativa||'-';
-  $('led').className='led '+(d>0?'go':d<0?'no':'on');
-  if(d!==0 && supaReady) await sendToPanel(pileNow,d,v);
-  setLed(d>0?('colocou +'+d):d<0?('tirou '+(-d)):('pilha: '+pileNow), d>0?'go':d<0?'no':'on');
-}
-async function sendToPanel(q,delta,v){
-  try{
-    const r=await fetch(SUPABASE_URL+'/rest/v1/leituras',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
-      body:JSON.stringify({sessao:SESSAO,quantidade:q,delta:delta,justificativa:v.justificativa||''})});
-    if(!r.ok){$('conn').textContent='painel: erro';$('conn').className='conn off';console.error('supabase',await r.text());}
-    else{$('conn').textContent='painel: enviando';$('conn').className='conn ok';}
-  }catch(e){$('conn').textContent='painel: sem rede';$('conn').className='conn off';console.error(e);}
-}
-function setLed(t,c){$('status').textContent=t;$('led').className='led'+(c?' '+c:'');}
 </script>
 </body>
 </html>
