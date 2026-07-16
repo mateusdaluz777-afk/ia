@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Leitor · Contagem ao vivo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--graphite:#16191d;--panel:#20242a;--panel2:#282d34;--line:#363c44;--ink:#eceef1;--muted:#8b939e;--amber:#f5a623;--go:#2fd071;--go-dim:rgba(47,208,113,.14);--nogo:#ff4d4d;--nogo-dim:rgba(255,77,77,.14);--idle:#5b636d;--mono:'IBM Plex Mono',monospace;--disp:'Space Grotesk',system-ui,sans-serif}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--graphite);color:var(--ink);font-family:var(--disp);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:520px;margin:0 auto;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:100vh}
+  header{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:12px 14px}
+  .led{width:11px;height:11px;border-radius:50%;background:var(--idle);flex:0 0 auto;transition:.25s}
+  .led.on{background:var(--amber);box-shadow:0 0 10px var(--amber)}.led.go{background:var(--go);box-shadow:0 0 10px var(--go)}.led.no{background:var(--nogo);box-shadow:0 0 10px var(--nogo)}
+  h1{font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;margin:0}
+  .sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px}
+  .cbox{margin-left:auto;text-align:right}
+  .count{font-family:var(--mono);font-weight:700;font-size:36px;color:var(--go);line-height:1}
+  .clbl{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.14em}
+  .conn{font-family:var(--mono);font-size:10px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
+  .conn.ok{color:var(--go);border-color:var(--go)}.conn.off{color:var(--nogo);border-color:var(--nogo)}
+  .card{border:1px solid var(--line);background:var(--panel);border-radius:12px;overflow:hidden}
+  .refbar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel2)}
+  .refthumb{width:52px;height:52px;border-radius:9px;border:1px dashed var(--line);background:#0c0e11;flex:0 0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:var(--mono);font-size:8px;color:var(--idle);text-align:center}
+  .refthumb.set{border:2px solid var(--go)}.refthumb img{width:100%;height:100%;object-fit:cover}
+  .refinfo{flex:1;min-width:0}.refinfo .rt{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase}.refinfo .rd{font-size:12px;margin-top:2px}
+  .view{position:relative;background:#0c0e11;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center}
+  video,#snap{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}#snap{display:none}
+  .placeholder{color:var(--muted);font-family:var(--mono);font-size:11px;text-align:center;padding:20px;line-height:1.6;z-index:2}
+  .reticle{position:absolute;inset:0;pointer-events:none;z-index:3}
+  .box{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:70%;height:74%}
+  .corner{position:absolute;width:24px;height:24px;border:2px solid var(--amber);opacity:.85}
+  .tl{top:0;left:0;border-right:0;border-bottom:0}.tr{top:0;right:0;border-left:0;border-bottom:0}.bl{bottom:0;left:0;border-right:0;border-top:0}.br{bottom:0;right:0;border-left:0;border-top:0}
+  .tag{position:absolute;left:50%;bottom:10%;transform:translateX(-50%);font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--amber);background:rgba(0,0,0,.45);padding:3px 8px;border-radius:4px;white-space:nowrap}
+  .view.busy{outline:2px solid var(--amber);outline-offset:-2px}
+  .badge{position:absolute;top:8px;left:8px;z-index:5;font-family:var(--mono);font-size:10px;padding:4px 9px;border-radius:6px;background:rgba(0,0,0,.55);color:var(--muted);border:1px solid var(--line)}
+  .badge.move{color:var(--amber);border-color:var(--amber)}.badge.settle{color:var(--go);border-color:var(--go)}
+  .stamp{position:absolute;top:8px;right:8px;z-index:5;font-family:var(--mono);font-weight:700;font-size:24px;padding:6px 12px;border-radius:8px;border:2px solid var(--idle);color:var(--idle);background:rgba(0,0,0,.4)}
+  .stamp.go{color:var(--go);border-color:var(--go)}.stamp.no{color:var(--nogo);border-color:var(--nogo)}
+  .motion{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--panel2);border-top:1px solid var(--line)}
+  .mlbl{font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap}
+  .mbar{flex:1;height:7px;background:#12151a;border-radius:5px;overflow:hidden}.mfill{height:100%;width:0;background:var(--amber);transition:width .08s}
+  input[type=range]{width:90px;accent-color:var(--amber)}
+  .controls{display:flex;gap:8px;padding:10px;flex-wrap:wrap;background:var(--panel2);border-top:1px solid var(--line)}
+  button{font-family:var(--disp);font-weight:600;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:14px 14px;cursor:pointer;font-size:15px;flex:1;min-width:44%}
+  button:disabled{opacity:.4}
+  .main{background:var(--amber);color:#1a1204;border-color:var(--amber);font-weight:700;text-transform:uppercase;letter-spacing:.04em;min-width:100%}
+  .main.active{background:var(--go);border-color:var(--go);color:#08150c}
+  .ghost{background:var(--go-dim);border-color:var(--go);color:var(--go)}
+  .row2{display:flex;gap:8px;padding:0 10px 10px;background:var(--panel2)}
+  .row2 button{min-width:0}
+  .just{font-size:13px;color:var(--ink);padding:10px 12px;background:var(--panel2);border-top:1px solid var(--line);min-height:20px}
+  .sess{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;padding:6px}.sess b{color:var(--amber);letter-spacing:.1em}
+  .warn{font-family:var(--mono);font-size:11px;color:var(--nogo);background:var(--nogo-dim);border:1px solid var(--nogo);border-radius:10px;padding:10px 12px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="led" id="led"></div>
+    <div><h1>Leitor</h1><div class="sub" id="status">câmera desligada</div></div>
+    <div class="conn" id="conn">painel: —</div>
+    <div class="cbox"><div class="count" id="count">0</div><div class="clbl">NA PILHA</div></div>
+  </header>
+
+  <div id="cfgWarn"></div>
+
+  <div class="card">
+    <div class="refbar">
+      <div class="refthumb" id="refThumb">sem<br>ref</div>
+      <div class="refinfo"><div class="rt">Passo 1 · Referência</div><div class="rd" id="refState">Mostre a peça e capture a referência.</div></div>
+    </div>
+    <div class="view" id="view">
+      <div class="badge" id="badge" style="display:none">ocioso</div>
+      <div class="stamp" id="stamp" style="display:none">—</div>
+      <div class="placeholder" id="placeholder">Toque em Ligar câmera.</div>
+      <video id="video" playsinline muted autoplay style="display:none"></video>
+      <canvas id="snap"></canvas>
+      <div class="reticle" style="display:none" id="reticle"><div class="box"><div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div><div class="tag">PILHA</div></div></div>
+    </div>
+    <div class="motion"><span class="mlbl">movimento</span><div class="mbar"><div class="mfill" id="mfill"></div></div><span class="mlbl">sensib.</span><input type="range" id="sens" min="1" max="10" value="5"></div>
+    <div class="controls">
+      <button class="main" id="btnCycle" disabled>Iniciar contagem ao vivo</button>
+      <button id="btnCam">Ligar câmera</button>
+      <button class="ghost" id="btnRefCam" disabled>Capturar referência</button>
+    </div>
+    <div class="row2">
+      <button id="btnMinus">− corrigir</button>
+      <button id="btnPlus">+ corrigir</button>
+      <button id="btnZero">Zerar pilha</button>
+      <button id="btnRefUp">Imagem ref</button>
+      <input type="file" id="refFile" accept="image/*" hidden>
+    </div>
+    <div class="just" id="just">Comece capturando a referência.</div>
+  </div>
+  <div class="sess">sessão: <b id="sessCode">—</b> · digite no painel</div>
+</div>
+
+<script>
+/* ===== CONFIGURAÇÃO ===== */
+const SUPABASE_URL      = "https://zdpvqqeaeabqupewmulo.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_C5GG9bWX5AAdBU_bngOioQ_zrt8VX59";
+const INSPECT_ENDPOINT  = "/api/inspect"; // proxy no seu domínio (Vercel)
+/* ======================== */
+
+const $=id=>document.getElementById(id);
+const video=$('video'),snap=$('snap'),view=$('view'),reticle=$('reticle');
+let stream=null,pileNow=0,busy=false,refB64=null,baseB64=null,pending=null;
+let sensorOn=false,prevGray=null,sawMotion=false,stillFrames=0;
+const SESSAO='L'+Date.now().toString(36).slice(-4).toUpperCase(); $('sessCode').textContent=SESSAO;
+const mC=document.createElement('canvas');mC.width=80;mC.height=60;const mCtx=mC.getContext('2d',{willReadFrequently:true});
+const CROP_W=0.70,CROP_H=0.74,SETTLE=4,CONF_MIN=70;
+const MX0=Math.round(80*(0.5-CROP_W/2)),MX1=Math.round(80*(0.5+CROP_W/2)),MY0=Math.round(60*(0.5-CROP_H/2)),MY1=Math.round(60*(0.5+CROP_H/2));
+function thr(){return 26-(+$('sens').value)*2;}
+const supaReady = SUPABASE_URL.indexOf('SEU-PROJETO')<0 && SUPABASE_ANON_KEY!=='SUA_ANON_KEY';
+if(!supaReady){ $('cfgWarn').innerHTML='<div class="warn">Supabase não configurado — conta local mas <b>não envia pro painel</b>. Preencha SUPABASE_URL e SUPABASE_ANON_KEY.</div>'; $('conn').textContent='painel: off'; $('conn').className='conn off'; }
+else { $('conn').textContent='painel: pronto'; $('conn').className='conn ok'; }
+
+const GUIDE=`Voce compara a MESMA pilha ANTES e DEPOIS de a pessoa mexer.
+Diga quantas pecas (iguais a REFERENCIA) foram ADICIONADAS ou RETIRADAS entre ANTES e DEPOIS:
+- colocaram 1 peca -> variacao=1 ; colocaram 2 -> variacao=2
+- tiraram 1 -> variacao=-1
+- nada mudou, ou so passou a mao sem deixar peca -> variacao=0
+IGNORE maos, bracos, ferramentas, sombras e fundo. Conte so pecas da referencia que FICARAM na pilha.
+Na duvida entre 0 e 1, responda 0.
+Responda APENAS JSON: {"variacao": <inteiro, pode ser negativo>, "confianca": <0-100>, "justificativa":"breve"}`;
+
+async function startCam(){
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
+    video.srcObject=stream;video.style.display='block';$('placeholder').style.display='none';reticle.style.display='block';$('badge').style.display='block';
+    $('btnRefCam').disabled=false;$('btnCam').textContent='Desligar';setLed('câmera ativa','on');requestAnimationFrame(loop);
+  }catch(e){ setLed('câmera bloqueada','no'); $('placeholder').innerHTML='Câmera bloqueada. Publique no seu HTTPS ou use "Imagem ref".'; }
+}
+function stopCam(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} stopSensor();video.style.display='none';snap.style.display='none';reticle.style.display='none';$('badge').style.display='none';$('placeholder').style.display='block';$('placeholder').textContent='Câmera desligada.';$('btnRefCam').disabled=true;$('btnCycle').disabled=true;$('btnCam').textContent='Ligar câmera';setLed('câmera desligada',''); }
+$('btnCam').onclick=()=>stream?stopCam():startCam();
+
+function grab(freeze){ const w=video.videoWidth||1280,h=video.videoHeight||960;snap.width=w;snap.height=h;snap.getContext('2d').drawImage(video,0,0,w,h);if(freeze)snap.style.display='block';const cw=Math.round(w*CROP_W),ch=Math.round(h*CROP_H),cx=Math.round((w-cw)/2),cy=Math.round((h-ch)/2);const c=document.createElement('canvas');c.width=cw;c.height=ch;c.getContext('2d').drawImage(snap,cx,cy,cw,ch,0,0,cw,ch);return c.toDataURL('image/jpeg',0.92).split(',')[1]; }
+
+function setRef(b64){ refB64=b64;const t=$('refThumb');t.classList.add('set');t.innerHTML='<img src="data:image/jpeg;base64,'+b64+'">';$('refState').textContent='Referência guardada.';$('btnRefCam').textContent='Recapturar';if(stream)$('btnCycle').disabled=false;$('just').textContent='Referência pronta. Inicie a contagem.';setLed('referência guardada','go'); }
+$('btnRefCam').onclick=()=>{if(stream)setRef(grab(false));};
+$('btnRefUp').onclick=()=>$('refFile').click();
+$('refFile').onchange=e=>{const f=e.target.files[0];if(!f)return;toB64(f,setRef);e.target.value='';};
+function toB64(f,cb){const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);cb(c.toDataURL('image/jpeg',0.92).split(',')[1]);};img.src=r.result;};r.readAsDataURL(f);}
+
+/* correção manual */
+function bump(d){ pileNow=Math.max(0,pileNow+d); $('count').textContent=pileNow; if(supaReady)sendToPanel(pileNow,d,{justificativa:'correção manual'}); }
+$('btnPlus').onclick=()=>bump(1);
+$('btnMinus').onclick=()=>bump(-1);
+$('btnZero').onclick=()=>{ const d=-pileNow; pileNow=0;$('count').textContent='0'; if(d!==0&&supaReady)sendToPanel(0,d,{justificativa:'zerado manual'}); };
+
+function loop(){
+  if(!stream)return;
+  mCtx.drawImage(video,0,0,80,60);const d=mCtx.getImageData(0,0,80,60).data;const cur=new Float32Array(4800);
+  for(let i=0,j=0;i<d.length;i+=4,j++)cur[j]=d[i]*0.3+d[i+1]*0.59+d[i+2]*0.11;
+  let s=0,n=0;if(prevGray){for(let y=MY0;y<MY1;y++)for(let x=MX0;x<MX1;x++){const k=y*80+x;s+=Math.abs(cur[k]-prevGray[k]);n++;}}
+  const sc=n?s/n:0;prevGray=cur;$('mfill').style.width=Math.min(100,sc/thr()*50)+'%';
+  if(sensorOn){
+    const b=$('badge');
+    if(!busy){
+      if(sc>thr()){ if(!sawMotion){baseB64=grab(false);} sawMotion=true;stillFrames=0;b.textContent='movimento';b.className='badge move'; }
+      else if(sawMotion){ stillFrames++;b.textContent='colocou? lendo…';b.className='badge settle'; if(stillFrames>=SETTLE){sawMotion=false;stillFrames=0;b.textContent='lendo';inspect(grab(true));} }
+      else{ b.textContent='aguardando';b.className='badge'; }
+    } else {
+      if(sc>thr() && !sawMotion){ baseB64=grab(false); sawMotion=true; stillFrames=0; }
+    }
+  }
+  requestAnimationFrame(loop);
+}
+$('btnCycle').onclick=()=>sensorOn?stopSensor():startSensor();
+function startSensor(){ if(!refB64){alert('Capture a referência primeiro.');return;} sensorOn=true;sawMotion=false;stillFrames=0;const b=$('btnCycle');b.classList.add('active');b.textContent='Parar';setLed('contando ao vivo','on'); }
+function stopSensor(){ sensorOn=false;pending=null;const b=$('btnCycle');b.classList.remove('active');b.textContent='Iniciar contagem ao vivo';$('badge').textContent='ocioso';$('badge').className='badge';if(stream)setLed('câmera ativa','on'); }
+
+function parseV(t){let s=t.replace(/```json|```/g,'').trim();const m=s.match(/\{[\s\S]*\}/);if(m)s=m[0];return JSON.parse(s);}
+async function callModel(after){
+  const content=[];
+  if(refB64){content.push({type:'text',text:'REFERENCIA (peca a contar):'});content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:refB64}});}
+  if(baseB64){content.push({type:'text',text:'FOTO ANTES (pilha antes de mexer):'});content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:baseB64}});}
+  content.push({type:'text',text:'FOTO DEPOIS (pilha agora). '+GUIDE});
+  content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:after}});
+  const res=await fetch(INSPECT_ENDPOINT||'https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content}]})});
+  const data=await res.json();
+  const text=(data.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('\n');
+  return parseV(text);
+}
+async function inspect(after){
+  if(busy){pending=after;return;} busy=true;view.classList.add('busy');setLed('lendo…','on');
+  try{
+    const v=await callModel(after);
+    let d=parseInt(v.variacao,10); if(isNaN(d))d=0;
+    const conf=(v.confianca!=null)?+v.confianca:100;
+    if(d!==0){                                   // confirmação dupla só quando mudou
+      const v2=await callModel(after);
+      let d2=parseInt(v2.variacao,10); if(isNaN(d2))d2=0;
+      if(d2!==d){ v.justificativa='leituras divergiram ('+d+' vs '+d2+') — não contei'; d=0; }
+    }
+    if(d!==0 && conf<CONF_MIN){ v.justificativa='confiança baixa ('+conf+') — não contei'; d=0; }
+    await handle(d,v);
+  }catch(err){ setLed('erro na leitura','no');$('just').textContent='Falha ao ler. Veja o console.';console.error(err); }
+  busy=false;view.classList.remove('busy');snap.style.display='none';
+  if(sensorOn)setLed('contando ao vivo','on');
+  if(pending){const p=pending;pending=null;setTimeout(()=>inspect(p),40);}
+}
+
+async function handle(d,v){
+  if(d<0) d=Math.max(d,-pileNow);              // não desconta abaixo de zero
+  pileNow=Math.max(0,pileNow+d);
+  $('count').textContent=pileNow;
+  const st=$('stamp');st.style.display='block';
+  if(d>0){st.textContent='+'+d;st.className='stamp go';}
+  else if(d<0){st.textContent=String(d);st.className='stamp no';}
+  else{st.textContent=String(pileNow);st.className='stamp';}
+  $('just').textContent=v.justificativa||'-';
+  $('led').className='led '+(d>0?'go':d<0?'no':'on');
+  if(d!==0 && supaReady) await sendToPanel(pileNow,d,v);
+  setLed(d>0?('colocou +'+d):d<0?('tirou '+(-d)):('pilha: '+pileNow), d>0?'go':d<0?'no':'on');
+}
+async function sendToPanel(q,delta,v){
+  try{
+    const r=await fetch(SUPABASE_URL+'/rest/v1/leituras',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({sessao:SESSAO,quantidade:q,delta:delta,justificativa:v.justificativa||''})});
+    if(!r.ok){$('conn').textContent='painel: erro';$('conn').className='conn off';console.error('supabase',await r.text());}
+    else{$('conn').textContent='painel: enviando';$('conn').className='conn ok';}
+  }catch(e){$('conn').textContent='painel: sem rede';$('conn').className='conn off';console.error(e);}
+}
+function setLed(t,c){$('status').textContent=t;$('led').className='led'+(c?' '+c:'');}
+</script>
+</body>
+</html>
